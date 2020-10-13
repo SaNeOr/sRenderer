@@ -257,8 +257,13 @@ void Triangle(Vec3f* pts, float* zbuffer, TGAImage& image,  TGAImage& diff, Vec2
             if (zbuffer[int(p.x + p.y * width)] < p.z) {
                 zbuffer[int(p.x + p.y * width)] = p.z;
 
+                int X = 0, Y = 0;
                 for (int i = 0; i < 3; i++) {
-                    image.set(p.x, p.y, diff.get(uv[i].x, uv[i].y));
+                    X += uv[i].x * bc_screen[i];
+                    Y += uv[i].y * bc_screen[i];
+                }
+                for (int i = 0; i < 3; i++) {
+                    image.set(p.x,p.y, diff.get(X, Y));
                 }
             }
         }
@@ -347,21 +352,10 @@ int main(int argc, char** argv) {
     for (int i = 0; i < model->nfaces(); i++) {
         std::vector<int> face = model->face(i);
 
-        //for (int j = 0; j < 3; j++) {
-        //    //if (model->vert(face[j])) {
-        //        Vec3f v0 = model->vert(face[j]);
-        //        //std::cout << v0.x << " " << v0.y << " " << v0.z << std::endl;
-        //        Vec3f v1 = model->vert(face[(j + 1) % 3]);
-        //        int x0 = (v0.x + 1.) * width /  2.;
-        //        int y0 = (v0.y + 1.) * height / 2. - height / 2.0f;
-        //        int x1 = (v1.x + 1.) * width /  2.;
-        //        int y1 = (v1.y + 1.) * height / 2. - height / 2.0f;
-        //        Line(x0, y0, x1, y1, image, white);
-        //    //}
-        //}
         Vec2i screen_coords[3];
         Vec3f world_coords[3];
         Vec3f pts[3];
+        Vec2i uv[3];
 
         for (int j = 0; j < 3; j++) {
             Vec3f v = model->vert(face[j]); 
@@ -371,10 +365,9 @@ int main(int argc, char** argv) {
             //screen_coords[j] = Vec2i(vx, vy);
             world_coords[j] = v;
            
-            for (int i = 0; i < 3; i++) {
-                pts[i] = World2screen(model->vert(face[i]));
-                //pts[i].y -= height / 2.0f;
-            }
+            pts[j] = World2screen(model->vert(face[j]));
+            uv[j] = model->uv(i, j);
+            //pts[i].y -= height / 2.0f;
         }
 
         Vec3f n = cross( (world_coords[2] - world_coords[0]) , (world_coords[1] - world_coords[0]));        //   fuck xor!
@@ -383,11 +376,6 @@ int main(int argc, char** argv) {
         float indensity = n * light_dir;
         if (indensity >= 0) {
             //Triangle(screen_coords[0], screen_coords[1], screen_coords[2], image, TGAColor(indensity * 255, indensity * 255, indensity * 255, 255));
-
-            Vec2i uv[3];
-            for (int k = 0; k < 3; k++) {
-                uv[k] = model->uv(i, k);
-            }
             //Triangle(pts, zbuffer, image, TGAColor(indensity * 255, indensity * 255, indensity * 255, 255));
             Triangle(pts, zbuffer, image, diff, uv);
         }
