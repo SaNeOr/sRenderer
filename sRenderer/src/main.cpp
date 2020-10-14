@@ -206,11 +206,15 @@ Vec3f Barycentric(Vec3f A, Vec3f B, Vec3f C, Vec3f P) {
     }
     Vec3f u = cross(s[0], s[1]);
     if (std::abs(u[2]) > 1e-2) // dont forget that u[2] is integer. If it is zero then triangle ABC is degenerate
-        return Vec3f(1.f - (u.x + u.y) / u.z, u.y / u.z, u.x / u.z);
+        return Vec3f(1.f - (u.y + u.x) / u.z, u.y / u.z, u.x / u.z);
     return Vec3f(-1, 1, 1); // in this case generate negative coordinates, it will be thrown away by the rasterizator
 }
 
 void Triangle(Vec3f* pts, float* zbuffer, TGAImage& image, TGAColor color) {
+    if (pts[0].y > pts[1].y) {std::swap(pts[0], pts[1]);}
+    if (pts[0].y > pts[1].y) {std::swap(pts[0], pts[1]);}
+    if (pts[1].y > pts[2].y) {std::swap(pts[1], pts[2]);}
+
     Vec2f boundmin = Vec2f(
         std::max(0.0f, std::min(pts[0].x, std::min(pts[1].x, pts[2].x)) ),
         std::max(0.0f, std::min(pts[0].y, std::min(pts[1].y, pts[2].y)))
@@ -220,6 +224,7 @@ void Triangle(Vec3f* pts, float* zbuffer, TGAImage& image, TGAColor color) {
         std::min((float)width, std::max(pts[0].x, std::max(pts[1].x, pts[2].x))),
         std::min((float)height,std::max(pts[0].y, std::max(pts[1].y, pts[2].y)))
     };
+
 
     Vec3f p;
     for (p.x = boundmin.x; p.x <= boundmax.x; p.x++) {
@@ -236,7 +241,14 @@ void Triangle(Vec3f* pts, float* zbuffer, TGAImage& image, TGAColor color) {
     }
 }
 
+
+
 void Triangle(Vec3f* pts, float* zbuffer, TGAImage& image,  TGAImage& diff, Vec2i* uv) {
+    // sort by y-coordinates; (ASC      pts[0] < pts[1] < pts[2]
+    if (pts[0].y > pts[1].y) {std::swap(pts[0], pts[1]); std::swap(uv[0],uv[1]);}
+    if (pts[0].y > pts[1].y) {std::swap(pts[0], pts[1]); std::swap(uv[0],uv[1]);}
+    if (pts[1].y > pts[2].y) {std::swap(pts[1], pts[2]); std::swap(uv[1],uv[2]);}
+
     Vec2f boundmin = Vec2f(
         std::max(0.0f, std::min(pts[0].x, std::min(pts[1].x, pts[2].x))),
         std::max(0.0f, std::min(pts[0].y, std::min(pts[1].y, pts[2].y)))
