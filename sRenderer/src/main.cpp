@@ -12,10 +12,12 @@ const TGAColor green = TGAColor(0, 255, 0, 255);
 const TGAColor blue = TGAColor(0, 0, 255, 255);
 
 const Vec3f light_dir = Vec3f(0, 0, -1);
+Vec3f camera = Vec3f(0, 0, 3);
 
 Model* model = NULL;
 const int width = 800;
 const int height = 800;
+const int depth = 255;
 
 void Line(int x0, int y0, int x1, int y1, TGAImage& image, TGAColor color) {
     
@@ -59,6 +61,24 @@ void Line(Vec2i t0, Vec2i t1, TGAImage& image, TGAColor color) {
     Line(t0.x, t0.y, t1.x, t1.y, image, color);
 }
 
+
+
+void WireFrame(Vec3f* pts, TGAImage& image, TGAColor color = white) {
+	Vec2i a = Vec2i(pts[0].x, pts[0].y);
+	Vec2i b = Vec2i(pts[1].x, pts[1].y);
+	Vec2i c = Vec2i(pts[2].x, pts[2].y);
+
+    Line(a, b, image, color);
+    Line(b, c, image, color);
+    Line(a, c, image, color);
+}
+
+
+// math
+//  translate matrix
+//  scale matrix
+//  rotate matrix
+//
 
 //  Scan Convert Line:
 //#define L2L_SCAN 
@@ -187,6 +207,7 @@ void Triangle(Vec2i t0, Vec2i t1, Vec2i t2, TGAImage& image, TGAColor color){
 //    float dot01 = v0 * v1;
 //    float dot02 = v0 * v2;
 //    float dot11 = v1 * v1;
+
 //    float dot12 = v1 * v2;
 //
 //
@@ -204,8 +225,8 @@ Vec3f Barycentric(Vec3f A, Vec3f B, Vec3f C, Vec3f P) {
         s[i][1] = B[i] - A[i];
         s[i][2] = A[i] - P[i];
     }
-    Vec3f u = cross(s[0], s[1]);
-    if (std::abs(u[2]) > 1e-2) // dont forget that u[2] is integer. If it is zero then triangle ABC is degenerate
+    Vec3f u = (s[0] ^ s[1]);
+    if (std::abs(u[2]) > 1e-2) // don't forget that u[2] is integer. If it is zero then triangle ABC is degenerate
         return Vec3f(1.f - (u.y + u.x) / u.z, u.y / u.z, u.x / u.z);
     return Vec3f(-1, 1, 1); // in this case generate negative coordinates, it will be thrown away by the rasterizator
 }
@@ -245,6 +266,7 @@ void Triangle(Vec3f* pts, float* zbuffer, TGAImage& image, TGAColor color) {
 
 void Triangle(Vec3f* pts, float* zbuffer, TGAImage& image,  TGAImage& diff, Vec2i* uv) {
     // sort by y-coordinates; (ASC      pts[0] < pts[1] < pts[2]
+    if (pts[0].y == pts[1].y && pts[0].y == pts[2].y) return;
     if (pts[0].y > pts[1].y) {std::swap(pts[0], pts[1]); std::swap(uv[0],uv[1]);}
     if (pts[0].y > pts[1].y) {std::swap(pts[0], pts[1]); std::swap(uv[0],uv[1]);}
     if (pts[1].y > pts[2].y) {std::swap(pts[1], pts[2]); std::swap(uv[1],uv[2]);}
@@ -266,7 +288,8 @@ void Triangle(Vec3f* pts, float* zbuffer, TGAImage& image,  TGAImage& diff, Vec2
             if (bc_screen.x < 0 || bc_screen.y < 0 || bc_screen.z < 0) continue;
             p.z = 0;
             for (int i = 0; i < 3; i++) p.z += pts[i].z * bc_screen[i];     //  p = uA + vB + wC => p.z = uA.z + vB.z + wC.z;
-            if (zbuffer[int(p.x + p.y * width)] < p.z) {
+            if (zbuffer[int(p.x + p.y * width)] < p.z) 
+            {
                 zbuffer[int(p.x + p.y * width)] = p.z;
 
                 int X = 0, Y = 0;
@@ -308,10 +331,41 @@ void Triangle(Vec3f* pts, float* zbuffer, TGAImage& image,  TGAImage& diff, Vec2
 //    }
 //}
 
+Vec3f m2v(Matrix m) {
+    return Vec3f(m[0][0] / m[3][0], m[1][0] / m[3][0], m[2][0]/ m[3][0]);
+}
+
+Matrix v2m(Vec3f v) {
+    Matrix m(4, 1);     //  [0,0,0,0]
+    m[0][0] = v.x;
+    m[1][0] = v.y;
+    m[2][0] = v.z;
+    m[3][0] = 1.0f;
+
+    return m;
+}
+
+Matrix ViewPort(int x, int y, int w, int h) {
+    Matrix m = Matrix::identity(4);
+    
+    m[0][0] = w / 2.0f;
+    m[1][1] = h / 2.0f;
+    m[2][2] = depth / 2.0f;
+
+
+    m[0][3] = x + w / 2.0f;
+    m[1][3] = y + h / 2.0f;
+    m[2][3] = depth / 2.0f;
+
+    return m;
+}
 
 
 Vec3f World2screen(Vec3f v) {
-    return Vec3f(int((v.x + 1.0f) * width / 2.0f + 0.5f), int((v.y + 1.0f) * height / 2.0f + 0.5f), v.z);
+    return Vec3f(v.x * width / 2.0f + v.x + width/ 2.0f, 
+       v.y * height / 2.0f + v.y + height / 2.0f - height / 2.0f ,
+        v.z);
+    //return Vec3f(int((v.x + 1.0f) * width / 2.0f), int((v.y + 1.0f) * height / 2.0f - height / 2.0f), v.z);
 }
 
 int main(int argc, char** argv) {
@@ -330,14 +384,20 @@ int main(int argc, char** argv) {
      //}
      
      //Line(10, 15, 13, 40, image, red);
-
+     
     //model = new Model("assets/obj/ddy.obj");
+
+    Matrix projection = Matrix::identity(4.0f);
+    projection[3][2] = -1.0f /camera.z;
+                                
+                                //startX, startY       // viewport width height
+    Matrix viewProj = ViewPort(0, -height / 2, width, height);
+
     TGAImage diff;//  = new TGAImage("assets/texture/african_head_diffuse.tga");
-    diff.read_tga_file("assets/texture/african_head_diffuse.tga");
+    diff.read_tga_file("assets/texture/jwj_diffuse.tga");
     diff.flip_vertically();
 
-    model = new Model("assets/obj/african_head.obj");
-
+    model = new Model("assets/obj/jwj.obj");
 
     TGAImage image(width, height, TGAImage::RGB);
 
@@ -367,26 +427,30 @@ int main(int argc, char** argv) {
         Vec2i screen_coords[3];
         Vec3f world_coords[3];
         Vec3f pts[3];
-        Vec2i uv[3];
 
         for (int j = 0; j < 3; j++) {
             Vec3f v = model->vert(face[j]); 
-            //std::cout << v.x << " " << v.y << " " << v.z << std::endl;
-            //int vx = (v.x + 1.0f) * width / 2.0f;
-            //int vy = (v.y + 1.0f) * height / 2.0f;//-height / 2.0f;
-            //screen_coords[j] = Vec2i(vx, vy);
             world_coords[j] = v;
-           
-            pts[j] = World2screen(model->vert(face[j]));
-            uv[j] = model->uv(i, j);
-            //pts[i].y -= height / 2.0f;
+
+
+            pts[j] = World2screen(v);
+            //pts[j] =  m2v(viewProj *  v2m(v));
+            
         }
 
-        Vec3f n = cross( (world_coords[2] - world_coords[0]) , (world_coords[1] - world_coords[0]));        //   fuck xor!
+        Vec3f n =  (world_coords[2] - world_coords[0]) ^ (world_coords[1] - world_coords[0]);        //   fuck xor!
         n.normalize();
 
         float indensity = n * light_dir;
-        if (indensity >= 0) {
+        if (indensity > 0) 
+        {
+			Vec2i uv[3];
+			for (int k = 0; k < 3; k++){
+			    uv[k] = model->uv(i, k);
+            }
+
+           
+            //WireFrame(pts, image);
             //Triangle(screen_coords[0], screen_coords[1], screen_coords[2], image, TGAColor(indensity * 255, indensity * 255, indensity * 255, 255));
             //Triangle(pts, zbuffer, image, TGAColor(indensity * 255, indensity * 255, indensity * 255, 255));
             Triangle(pts, zbuffer, image, diff, uv);
@@ -395,9 +459,24 @@ int main(int argc, char** argv) {
 
     }
 
-
     image.flip_vertically(); // i want to have the origin at the left bottom corner of the image
     image.write_tga_file("out/output.tga");
+
+
+	{ // dump z-buffer
+		TGAImage zbimage(width, height, TGAImage::GRAYSCALE);
+		for (int i = 0; i < width; i++) {
+			for (int j = 0; j < height; j++) {
+
+                if(zbuffer[i + j * width] >= 0)
+				    zbimage.set(i, j, TGAColor(zbuffer[i + j * width] * 255, 1));
+
+                //std::cout << zbuffer[i + j * width] << " ";
+			}
+		}
+		zbimage.flip_vertically(); // i want to have the origin at the left bottom corner of the image
+		zbimage.write_tga_file("out/zbuffer.tga");
+	}
 
     delete model;
     return 0;
