@@ -48,6 +48,7 @@ Matrix Matrix::operator*(const Matrix& a) {
 			result.m[i][j] = 0.f;
 			for (int k = 0; k < cols; k++) {
 				result.m[i][j] += m[i][k] * a.m[k][j];
+				//result.m[i][j] = int(result.m[i][j]);
 			}
 		}
 	}
