@@ -39,6 +39,8 @@ void Renderer::Line(int x0, int y0, int x1, int y1, TGAImage& image, TGAColor co
 	}
 }
 
+
+
 void Renderer::Line(Vec2i t0, Vec2i t1, TGAImage& image, TGAColor color)
 {
 	Line(t0.x, t0.y, t1.x, t1.y, image, color);
@@ -246,4 +248,65 @@ Matrix Renderer::LookAt(Vec3f eye, Vec3f center, Vec3f up)
 	}
 
 	return res * eyePos;
+}
+
+void Renderer::LineGL(int x0, int y0, int x1, int y1, TGAColor color)
+{
+
+	glColor3f(color.r / 255.0f, color.g / 255.0f, color.b / 255.0f);
+	
+
+
+
+	bool steep = false;
+	if (std::abs(x1 - x0) < std::abs(y1 - y0)) {
+		std::swap(x0, y0);
+		std::swap(x1, y1);
+		steep = true;
+	}
+
+	if (x1 < x0) {
+		std::swap(x0, x1);
+		std::swap(y0, y1);
+	}
+
+
+	int dx = x1 - x0;
+	int dy = y1 - y0;
+
+	float derror = std::abs(dy / float(dx));
+	float error = 0.0f;
+
+	int y = y0;
+	for (float x = x0; x <= x1; x++) {   //  dx > dy
+		if (!steep) {
+			glVertex2f(x/ 640.0f, y/ 680.0f);
+		}
+		else {
+			glVertex2f(y /640.0f , x/480.0f);
+
+		}
+
+		error += derror;
+		if (error > 0.5f) {
+			y += (y1 > y0 ? 1.0f : -1.0f);
+			error -= 1.0f;
+		}
+	}
+}
+
+void Renderer::LineGL(Vec2i t0, Vec2i t1, TGAColor color)
+{
+	LineGL(t0.x, t0.y, t1.x, t1.y, color);
+}
+
+void Renderer::WireFrameGL(Vec3f* pts, TGAColor color)
+{
+	Vec2i a = Vec2i(pts[0].x, pts[0].y);
+	Vec2i b = Vec2i(pts[1].x, pts[1].y);
+	Vec2i c = Vec2i(pts[2].x, pts[2].y);
+
+	LineGL(a, b, color);
+	LineGL(b, c, color);
+	LineGL(a, c, color);
 }
