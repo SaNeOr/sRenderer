@@ -17,7 +17,8 @@ const TGAColor red = TGAColor(255, 0, 0, 255);
 const TGAColor green = TGAColor(0, 255, 0, 255);
 const TGAColor blue = TGAColor(0, 0, 255, 255);
 
-
+const int screenWidth = 800;
+const int screenHeight = 800;
 
 
 
@@ -45,7 +46,7 @@ namespace Renderer
 
 	void WireFrameGL(Vec3f* pts, TGAColor color);
 
-
+	void DrawPixel(int x, int y, TGAColor color);
 
 };
 

@@ -280,10 +280,12 @@ void Renderer::LineGL(int x0, int y0, int x1, int y1, TGAColor color)
 	int y = y0;
 	for (float x = x0; x <= x1; x++) {   //  dx > dy
 		if (!steep) {
-			glVertex2f(x/ 640.0f, y/ 680.0f);
+			//glVertex2f(x/ 640.0f, y/ 680.0f);
+			DrawPixel(x, y, color);
 		}
 		else {
-			glVertex2f(y /640.0f , x/480.0f);
+			//glVertex2f(y /640.0f , x/480.0f);
+			DrawPixel(y, x, color);
 
 		}
 
@@ -309,4 +311,14 @@ void Renderer::WireFrameGL(Vec3f* pts, TGAColor color)
 	LineGL(a, b, color);
 	LineGL(b, c, color);
 	LineGL(a, c, color);
+}
+
+void Renderer::DrawPixel(int x, int y, TGAColor color)
+{
+
+	glBegin(GL_POINTS);
+	glColor3f(color.r / 255.0f, color.g / 255.0f, color.b / 255.0f);
+
+	glVertex2f(x / (screenWidth / 2.0f), y / (screenHeight / 2.0f));
+	glEnd();
 }
